@@ -1,0 +1,50 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract SchoolMarkingSystem {
+    struct Student {
+        string name;
+        uint256 Score;
+        bool exists;
+    }
+
+    mapping(address => Student) private students;
+    address private teacher;
+
+    modifier onlyTeacher() {
+        require(msg.sender == teacher, "Only the teacher is allowed to perform this operation");
+        _;
+    }
+
+    constructor() {
+        teacher = msg.sender;
+    }
+
+    function enrollStudent(address studentAddress, string memory name, uint256 initialScore) public onlyTeacher {
+        require(initialScore <= 100, "Grade must be between 0 and 100");
+        require(!students[studentAddress].exists, "Student is already enrolled");
+
+        students[studentAddress] = Student(name, initialScore, true);
+    }
+
+    function updateStudentScore(address studentAddress, uint256 newScore) public onlyTeacher {
+        require(newScore <= 100, "Grade must be between 0 and 100");
+        require(students[studentAddress].exists, "Student is not enrolled");
+
+        students[studentAddress].Score = newScore;
+    }
+
+    function adjustScore(address studentAddress, int256 delta) public onlyTeacher {
+        require(students[studentAddress].exists, "Student is not enrolled");
+        int256 newScore = int256(students[studentAddress].Score) + delta;
+        require(newScore >= 0 && newScore <= 100, "Grade must be between 0 and 100");
+
+        students[studentAddress].Score = uint256(newScore);
+    }
+
+    function getStudentDetails(address studentAddress) public view returns (string memory, uint256) {
+        require(students[studentAddress].exists, "Student is not enrolled");
+        Student memory student = students[studentAddress];
+        return (student.name, student.Score);
+    }
+}
