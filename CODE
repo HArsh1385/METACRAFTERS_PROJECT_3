@@ -21,25 +21,33 @@ contract SchoolMarkingSystem {
     }
 
     function enrollStudent(address studentAddress, string memory name, uint256 initialScore) public onlyTeacher {
-        require(initialScore <= 100, "Grade must be between 0 and 100");
-        require(!students[studentAddress].exists, "Student is already enrolled");
+        require(initialScore <= 100, "Score must be between 0 and 100");
+        if (students[studentAddress].exists) {
+            revert("Student is already enrolled");
+        }
 
         students[studentAddress] = Student(name, initialScore, true);
     }
 
     function updateStudentScore(address studentAddress, uint256 newScore) public onlyTeacher {
-        require(newScore <= 100, "Grade must be between 0 and 100");
-        require(students[studentAddress].exists, "Student is not enrolled");
+        require(newScore <= 100, "Score must be between 0 and 100");
+        if (!students[studentAddress].exists) {
+            revert("Student is not enrolled");
+        }
 
         students[studentAddress].Score = newScore;
+        assert(students[studentAddress].Score <= 100);
     }
 
     function adjustScore(address studentAddress, int256 delta) public onlyTeacher {
-        require(students[studentAddress].exists, "Student is not enrolled");
+        if (!students[studentAddress].exists) {
+            revert("Student is not enrolled");
+        }
         int256 newScore = int256(students[studentAddress].Score) + delta;
-        require(newScore >= 0 && newScore <= 100, "Grade must be between 0 and 100");
+        require(newScore >= 0 && newScore <= 100, "Score must be between 0 and 100");
 
         students[studentAddress].Score = uint256(newScore);
+        assert(students[studentAddress].Score <= 100);
     }
 
     function getStudentDetails(address studentAddress) public view returns (string memory, uint256) {
