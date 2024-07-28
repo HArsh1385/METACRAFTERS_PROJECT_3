@@ -1,58 +1,64 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract SchoolMarkingSystem {
-    struct Student {
+contract VotingSystem {
+    struct Candidate {
         string name;
-        uint256 Score;
-        bool exists;
+        uint256 votes;
+        bool isRegistered;
     }
 
-    mapping(address => Student) private students;
-    address private teacher;
+    struct Voter {
+        bool hasVoted;
+        bool isRegistered;
+    }
 
-    modifier onlyTeacher() {
-        require(msg.sender == teacher, "Only the teacher is allowed to perform this operation");
+    mapping(address => Candidate) public candidatesRegistry;
+    mapping(address => Voter) public votersRegistry;
+    address private contractAdmin;
+
+    modifier onlyAdmin() {
+        require(msg.sender == contractAdmin, "Only the admin can perform this action");
+        _;
+    }
+
+    modifier hasNotVoted() {
+        require(!votersRegistry[msg.sender].hasVoted, "You have already voted");
         _;
     }
 
     constructor() {
-        teacher = msg.sender;
+        contractAdmin = msg.sender;
     }
 
-    function enrollStudent(address studentAddress, string memory name, uint256 initialScore) public onlyTeacher {
-        require(initialScore <= 100, "Score must be between 0 and 100");
-        if (students[studentAddress].exists) {
-            revert("Student is already enrolled");
+    function registerCandidate(address candidateAddress, string memory candidateName) public onlyAdmin {
+        require(!candidatesRegistry[candidateAddress].isRegistered, "Candidate is already registered");
+        require(bytes(candidateName).length > 0, "Candidate name cannot be empty");
+
+        candidatesRegistry[candidateAddress] = Candidate(candidateName, 0, true);
+    }
+
+    function castVote(address candidateAddress) public hasNotVoted {
+        require(candidatesRegistry[candidateAddress].isRegistered, "Candidate is not registered");
+
+        // Mark voter as having voted
+        votersRegistry[msg.sender] = Voter(true, true);
+
+        // Increment candidate vote count
+        candidatesRegistry[candidateAddress].votes++;
+
+        // Ensure the vote count is not negative
+        assert(candidatesRegistry[candidateAddress].votes >= 0);
+
+        // Additional revert check (for illustration)
+        if (candidatesRegistry[candidateAddress].votes < 0) {
+            revert("Vote count should not be negative");
         }
-
-        students[studentAddress] = Student(name, initialScore, true);
     }
 
-    function updateStudentScore(address studentAddress, uint256 newScore) public onlyTeacher {
-        require(newScore <= 100, "Score must be between 0 and 100");
-        if (!students[studentAddress].exists) {
-            revert("Student is not enrolled");
-        }
-
-        students[studentAddress].Score = newScore;
-        assert(students[studentAddress].Score <= 100);
-    }
-
-    function adjustScore(address studentAddress, int256 delta) public onlyTeacher {
-        if (!students[studentAddress].exists) {
-            revert("Student is not enrolled");
-        }
-        int256 newScore = int256(students[studentAddress].Score) + delta;
-        require(newScore >= 0 && newScore <= 100, "Score must be between 0 and 100");
-
-        students[studentAddress].Score = uint256(newScore);
-        assert(students[studentAddress].Score <= 100);
-    }
-
-    function getStudentDetails(address studentAddress) public view returns (string memory, uint256) {
-        require(students[studentAddress].exists, "Student is not enrolled");
-        Student memory student = students[studentAddress];
-        return (student.name, student.Score);
+    function getCandidateInfo(address candidateAddress) public view returns (string memory, uint256) {
+        require(candidatesRegistry[candidateAddress].isRegistered, "Candidate is not registered");
+        Candidate memory candidate = candidatesRegistry[candidateAddress];
+        return (candidate.name, candidate.votes);
     }
 }
